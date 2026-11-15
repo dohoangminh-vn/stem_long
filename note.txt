@@ -1,0 +1,9 @@
+mục tiêu: làm ra sa bàn thật, mô hình chạy thật
+chi phí tiết kiệm
+cơ cấu pít tông dùng motor n20, step, motor bước, v.v
+có d1mini esp8266, cảm biến siêu âm đo khoảng cách, led, 
+cách bố trí cảm biến cho phù hợp, kịch bản thử nghiệm, pitching report, luồng người dùng, usecase, đặc tả chương trình, v.v
+
+agent -> tự động thực hiện tác vụ
+thanh ray dẫn hướng dùng servo: đẩy chéo -> cửa nâng hạ
+đáy xốp

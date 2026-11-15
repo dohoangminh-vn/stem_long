@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>3D Digital Twin — Sa Bàn Cửa Chắn Ngập Thủy Lực 90° (IoT + AI Tiếng Việt)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root {
+      --bg-dark: #121519;
+      --card-bg: #232830;
+      --card-active: #2c333f;
+      --text-main: #f1f5f9;
+      --text-sub: #94a3b8;
+      --accent-cyan: #06b6d4;
+      --accent-green: #22c55e;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+      --accent-purple: #d946ef;
+      --accent-yellow: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: #0f172a;
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Vùng 3D Viewport */
+    #viewport-container {
+      position: relative;
+      flex: 1 1 55%;
+      width: 100%;
+      background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 100%);
+      overflow: hidden;
+    }
+
+    #canvas3d {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .top-bar {
+      position: absolute;
+      top: 10px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .brand-box {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(8px);
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+      pointer-events: auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    }
+
+    .brand-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: #38bdf8;
+      text-transform: uppercase;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 2px;
+    }
+
+    .top-right-group {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .qr-badge {
+      background: #ffffff;
+      padding: 6px 8px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.15s;
+    }
+
+    .qr-badge:hover {
+      transform: scale(1.05);
+    }
+
+    .qr-badge span {
+      font-size: 9px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 2px;
+    }
+
+    /* HUD Thông số 3 Cảm biến & Trợ lý AI */
+    .telemetry-hud {
+      position: absolute;
+      bottom: 10px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+      z-index: 10;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hud-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      pointer-events: auto;
+    }
+
+    .hud-pill {
+      background: rgba(15, 23, 42, 0.86);
+      backdrop-filter: blur(8px);
+      padding: 6px 11px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.15);
+      font-size: 11.5px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .hud-pill strong {
+      color: #38bdf8;
+      font-size: 12.5px;
+    }
+
+    .hud-pill.danger strong {
+      color: #f87171;
+    }
+
+    .hud-pill.warn strong {
+      color: #facc15;
+    }
+
+    .ai-toast {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(249, 115, 22, 0.75);
+      color: #fff;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      pointer-events: auto;
+      max-width: 470px;
+      cursor: pointer;
+    }
+
+    .ai-pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      flex-shrink: 0;
+    }
+
+    .ai-pulse-dot.speaking {
+      background: #38bdf8;
+      box-shadow: 0 0 12px #38bdf8;
+      animation: pulseAnim 0.6s infinite;
+    }
+
+    .ai-pulse-dot.listening {
+      background: #f97316;
+      box-shadow: 0 0 12px #f97316;
+      animation: pulseAnim 1s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.65; }
+    }
+
+    /* Bảng điều khiển phía dưới */
+    #control-deck {
+      flex: 0 0 auto;
+      background: var(--bg-dark);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding: 9px 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 20;
+    }
+
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tool-btn {
+      background: #252b35;
+      color: #cbd5e1;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      padding: 6px 11px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+
+    .tool-btn:hover {
+      background: #323a48;
+      color: #fff;
+    }
+
+    .tool-btn.active {
+      background: #0284c7;
+      color: #fff;
+      border-color: #38bdf8;
+    }
+
+    .tool-btn.warn-active {
+      background: #dc2626;
+      color: #fff;
+      border-color: #fca5a5;
+    }
+
+    .ai-btn {
+      background: linear-gradient(135deg, #ea580c, #f97316);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.45);
+    }
+
+    .ai-btn.listening {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.8);
+    }
+
+    .pitch-btn {
+      background: linear-gradient(135deg, #0284c7, #06b6d4);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .wifi-btn {
+      background: #252b35;
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .wifi-btn.offline {
+      color: #f97316;
+      border-color: rgba(249, 115, 22, 0.45);
+    }
+
+    .water-slider-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1c2129;
+      padding: 5px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 12px;
+    }
+
+    .water-slider-bar input[type="range"] {
+      flex: 1;
+      accent-color: #06b6d4;
+      cursor: pointer;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    @media (min-width: 700px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .ctrl-card {
+      background: var(--card-bg);
+      border: 1.5px solid rgba(255,255,255,0.06);
+      border-radius: 13px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .ctrl-card:hover {
+      background: var(--card-active);
+      transform: translateY(-1px);
+    }
+
+    .card-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+      flex-shrink: 0;
+    }
+
+    .card-info {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    .card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .card-status {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .ctrl-card.active-cyan {
+      border-color: var(--accent-cyan);
+      box-shadow: inset 0 0 18px rgba(6, 182, 212, 0.18);
+    }
+    .ctrl-card.active-cyan .card-icon { color: var(--accent-cyan); background: rgba(6, 182, 212, 0.16); }
+    .ctrl-card.active-cyan .card-status { color: var(--accent-cyan); }
+
+    .ctrl-card.active-green {
+      border-color: var(--accent-green);
+      box-shadow: inset 0 0 18px rgba(34, 197, 94, 0.18);
+    }
+    .ctrl-card.active-green .card-icon { color: var(--accent-green); background: rgba(34, 197, 94, 0.16); }
+    .ctrl-card.active-green .card-status { color: var(--accent-green); }
+
+    .ctrl-card.active-red {
+      border-color: var(--accent-red);
+      box-shadow: inset 0 0 18px rgba(239, 68, 68, 0.22);
+    }
+    .ctrl-card.active-red .card-icon { color: var(--accent-red); background: rgba(239, 68, 68, 0.18); }
+    .ctrl-card.active-red .card-status { color: var(--accent-red); }
+
+    .ctrl-card.active-purple {
+      border-color: var(--accent-purple);
+      box-shadow: inset 0 0 18px rgba(217, 70, 239, 0.18);
+    }
+    .ctrl-card.active-purple .card-icon { color: var(--accent-purple); background: rgba(217, 70, 239, 0.16); }
+    .ctrl-card.active-purple .card-status { color: var(--accent-purple); }
+
+    .ctrl-card.active-yellow {
+      border-color: var(--accent-yellow);
+      box-shadow: inset 0 0 18px rgba(234, 179, 8, 0.18);
+    }
+    .ctrl-card.active-yellow .card-icon { color: var(--accent-yellow); background: rgba(234, 179, 8, 0.16); }
+    .ctrl-card.active-yellow .card-status { color: var(--accent-yellow); }
+
+    /* Modal hiển thị Bản vẽ 2D, File 3D & Cấu hình */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.76);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 16px;
+      padding: 18px;
+      max-width: 880px;
+      max-height: 90vh;
+      overflow-y: auto;
+      width: 100%;
+      color: #f8fafc;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+    }
+
+    .modal-box h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: #38bdf8;
+    }
+
+    .modal-box p {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .input-row input {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 12.5px;
+    }
+
+    .cad-download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+
+    .cad-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 10px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cad-card strong {
+      color: #facc15;
+      font-size: 12.5px;
+    }
+
+    .cad-card span {
+      color: #94a3b8;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- VÙNG MÔ HÌNH 3D TƯƠNG TÁC (DIGITAL TWIN) -->
+  <div id="viewport-container">
+    <canvas id="canvas3d"></canvas>
+
+    <div class="top-bar">
+      <div class="brand-box">
+        <div class="brand-tag">THPT NGUYỄN HỮU TIẾN • BẢN SAO SỐ 3D + AI TIẾNG VIỆT</div>
+        <div class="brand-title">Sa Bàn Cửa Chắn Ngập Thủy Lực Inox 304 (2 Rãnh Âm Sàn + Hố Thu Điện Cực)</div>
+      </div>
+
+      <div class="top-right-group">
+        <div class="qr-badge" id="btnShowBlueprint" title="Xem Bản vẽ Kỹ thuật 2D & Tải File 3D (.STL / .OBJ)">
+          <span style="font-size:18px;">📐</span>
+          <span>BẢN VẼ & 3D</span>
+        </div>
+        <div class="qr-badge" id="btnShowQR" title="Kết nối mạch ESP8266 & Danh sách lệnh giọng nói">
+          <span style="font-size:18px;">🔗</span>
+          <span>MẠCH / VOICE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thông số thời gian thực của 3 Cảm biến + Trợ lý ảo AI -->
+    <div class="telemetry-hud">
+      <div class="hud-pills">
+        <div class="hud-pill" id="waterPill">
+          <span>🌊 Siêu âm HC-SR04:</span>
+          <strong id="lblWaterCm">1.5 cm</strong>
+          <span style="color:#94a3b8;font-size:10.5px;">(D=<span id="lblSensorDist">20.5</span>cm)</span>
+        </div>
+        <div class="hud-pill" id="contactSensorPill">
+          <span>🚰 Điện cực Hố thu:</span>
+          <strong id="lblContactSensor">KHÔ (An toàn)</strong>
+        </div>
+        <div class="hud-pill" id="irSensorPill">
+          <span>🔴 Hồng ngoại IR:</span>
+          <strong id="lblIrSensor">THÔNG THOÁNG</strong>
+        </div>
+        <div class="hud-pill">
+          <span>🚧 Cửa thủy lực:</span>
+          <strong id="lblGateAngle">0° (Âm sàn)</strong>
+        </div>
+      </div>
+
+      <div class="ai-toast" id="aiToast" title="Bấm vào đây để nghe lại câu nói tiếng Việt">
+        <div class="ai-pulse-dot" id="aiDot"></div>
+        <span id="aiSpeechText">🔊 Bấm vào bất kỳ nút nào hoặc bấm "Thuyết minh AI" để nghe giọng nói tiếng Việt!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- BẢNG ĐIỀU KHIỂN DƯỚI MÀN HÌNH -->
+  <div id="control-deck">
+    <div class="toolbar-row">
+      <div class="tool-group">
+        <button class="tool-btn" id="btn360">🔄 360°</button>
+        <button class="tool-btn" id="btnFit">🎯 FIT</button>
+        <button class="tool-btn" id="btnCutaway">📐 MẶT CẮT 90°</button>
+        <button class="tool-btn" id="btnIrObstacle" title="Giả lập có xe/người đi ngang qua tia Hồng ngoại khi cửa đang đóng">
+          🚧 Vật cản IR (Chống kẹp)
+        </button>
+      </div>
+
+      <div class="tool-group">
+        <button class="pitch-btn" id="btnPitchQuick" title="Phát bài thuyết trình giọng nói tiếng Việt chuẩn">
+          🔊 Thuyết minh AI
+        </button>
+        <button class="ai-btn" id="btnVoiceAI" title="Ra lệnh bằng giọng nói tiếng Việt">
+          🎙️ Ra lệnh Giọng nói
+        </button>
+        <button class="wifi-btn offline" id="btnWifiConfig" title="Cấu hình kết nối ESP8266 D1 Mini">
+          📶
+        </button>
+      </div>
+    </div>
+
+    <!-- Thanh điều chỉnh mực nước thử nghiệm -->
+    <div class="water-slider-bar">
+      <span>💧 <strong>Mực nước máng thử (0–8 cm):</strong></span>
+      <input type="range" id="waterSlider" min="0" max="8" step="0.1" value="1.5" />
+      <span id="sliderValText" style="min-width: 130px; text-align:right; color:#38bdf8; font-weight:700;">
+        1.5 cm (An toàn)
+      </span>
+    </div>
+
+    <!-- 6 nút điều khiển lớn kiểu game -->
+    <div class="cards-grid">
+      <div class="ctrl-card" id="cardGate">
+        <div class="card-icon">🛡️</div>
+        <div class="card-info">
+          <div class="card-title">Xi-lanh Cửa (90°)</div>
+          <div class="card-status" id="statusGate">ĐANG HẠ (0°)</div>
+        </div>
+      </div>
+
+      <div class="ctrl-card" id="cardRain">
+        <div class="card-icon">🌧️</div>
+        <div class="card-info">
+          <div class="card-title">Dâng nước ngập</div>
+          <div class="card-status" id="statusRain">ĐANG TẮT</div>
+        </div>
+      </div>
+
+      <div class="ctrl-card active-green" id="cardAuto">
+        <div class="card-icon">🤖</div>
+        <div class="card-info">
+          <div class="card-title">Tự động (3 Cảm biến)</div>
+          <div class="card-status" id="statusAuto">ĐANG BẬT</div>
+        </div>
+      </div>
+
+      <div class="ctrl-card" id="cardInspect">
+        <div class="card-icon">🔍</div>
+        <div class="card-info">
+          <div class="card-title">Xem rãnh âm sàn & xi-lanh</div>
+          <div class="card-status" id="statusInspect">ĐANG ĐÓNG NẮP</div>
+        </div>
+      </div>
+
+      <div class="ctrl-card" id="cardAlarm">
+        <div class="card-icon">🚨</div>
+        <div class="card-info">
+          <div class="card-title">Đèn & Còi báo động</div>
+          <div class="card-status" id="statusAlarm">ĐANG TẮT</div>
+        </div>
+      </div>
+
+      <div class="ctrl-card active-yellow" id="cardAudio">
+        <div class="card-icon">🔊</div>
+        <div class="card-info">
+          <div class="card-title">Giọng nói Tiếng Việt</div>
+          <div class="card-status" id="statusAudio">ĐANG BẬT (MP3)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 1: BẢN VẼ KỸ THUẬT 2D & TẢI FILE MÔ HÌNH 3D (.STL / .OBJ) -->
+  <div class="modal-backdrop" id="blueprintModal">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h3>📐 Bản Vẽ Kỹ Thuật Động Học Xi-lanh 90° & Bộ File Mô Hình 3D (.STL / .OBJ)</h3>
+        <button class="btn-primary" id="btnCloseBlueprint" style="background:#475569;">Đóng ✕</button>
+      </div>
+      <p>
+        Bản vẽ kỹ thuật chuẩn công nghiệp theo video thực tế: Cửa Inox 304 tôn gân quả trám dựng đứng vuông góc **90°**, bộ đôi xi-lanh thủy lực chìm hoàn toàn trong **2 rãnh âm sàn**, hố thu nước điện cực Inox và hệ thống điều khiển tự động:
+      </p>
+
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:10px; overflow:hidden; margin-bottom:12px;">
+        <img src="../ban_ve_ky_thuat/BAN_VE_KY_THUAT_XI_LANH_90_DO.svg" alt="Bản vẽ kỹ thuật xi lanh 90 độ" style="width:100%; height:auto; display:block;" />
+      </div>
+
+      <h3>📦 Tải File 3D Chuẩn CAD (Mở bằng 3D Viewer / Cura / Blender / AutoCAD để in 3D):</h3>
+      <div class="cad-download-grid">
+        <div class="cad-card">
+          <strong>1. Cánh cửa Inox 304 Gân quả trám</strong>
+          <span>Kích thước 220×100×6 mm, mặt gân chống trượt, khung xương hộp & 2 tai chốt mắt trâu P</span>
+          <a class="btn-primary" href="../mo_hinh_3d/cua_chan_ngap_90do.stl" download>⬇️ Tải file .STL</a>
+        </div>
+        <div class="cad-card">
+          <strong>2. Bộ đôi Xi-lanh Thủy lực Âm sàn</strong>
+          <span>Vỏ ben thủy lực, ty mạ crom, chân đế Clevis hạ chìm đáy rãnh B(95, -8mm)</span>
+          <a class="btn-primary" href="../mo_hinh_3d/xi_lanh_thuy_luc_bo_doi.stl" download>⬇️ Tải file .STL</a>
+        </div>
+        <div class="cad-card">
+          <strong>3. Sàn Granite 2 Rãnh Âm & Trụ Cổng</strong>
+          <span>Sàn dốc granite có 2 rãnh âm giấu ben, hố thu nước điện cực & 2 trụ cổng ngàm 90°</span>
+          <a class="btn-primary" href="../mo_hinh_3d/khung_ho_am_san_va_tru_cong.stl" download>⬇️ Tải file .STL</a>
+        </div>
+        <div class="cad-card">
+          <strong>4. Tổ hợp Sa bàn Tổng thể (Full)</strong>
+          <span>Full Assembly 3D lắp ghép hoàn chỉnh định dạng chuẩn .OBJ</span>
+          <a class="btn-primary" href="../mo_hinh_3d/sa_ban_tong_the.obj" download>⬇️ Tải file .OBJ</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: KẾT NỐI MẠCH ESP8266 & DANH SÁCH LỆNH GIỌNG NÓI TIẾNG VIỆT -->
+  <div class="modal-backdrop" id="configModal">
+    <div class="modal-box" style="max-width:520px;">
+      <h3>🔗 Kết nối mạch Wemos D1 Mini (ESP8266) & Lệnh Giọng Nói</h3>
+      <p>
+        Khi mạch ESP8266 phát Wi-Fi <code>SaBan_ChongNgap_IoT</code> (mật khẩu: <code>12345678</code>), nhập địa chỉ IP của mạch để đồng bộ 2 chiều:
+      </p>
+      <div class="input-row">
+        <input type="text" id="espIpInput" placeholder="Ví dụ: http://192.168.4.1" value="http://192.168.4.1" />
+        <button class="btn-primary" id="btnConnectEsp">Kết nối</button>
+      </div>
+      <p id="espConnStatus" style="font-size:12px; color:#f97316;">
+        ⚡ Trạng thái: Chế độ Mô phỏng 3D độc lập (Đầy đủ giọng nói tiếng Việt MP3 & hiệu ứng cơ khí).
+      </p>
+
+      <h3 style="margin-top:12px;">🎙️ Các câu lệnh giọng nói tiếng Việt (bấm "Ra lệnh Giọng nói" rồi nói):</h3>
+      <ul style="background:#0f172a; padding:10px 16px; border-radius:10px; font-size:12px; color:#cbd5e1; line-height:1.7; margin-bottom:12px;">
+        <li><code style="color:#f97316;font-weight:bold;">"Nâng cửa"</code> / <code style="color:#f97316;font-weight:bold;">"Đóng cửa chắn ngập"</code> → Xi-lanh đẩy cửa dựng đứng vuông góc 90°</li>
+        <li><code style="color:#f97316;font-weight:bold;">"Hạ cửa"</code> / <code style="color:#f97316;font-weight:bold;">"Mở cửa"</code> → Thu xi-lanh hạ phẳng cửa về 0° âm sàn</li>
+        <li><code style="color:#f97316;font-weight:bold;">"Mở nắp"</code> / <code style="color:#f97316;font-weight:bold;">"Xem cơ khí"</code> → Nhấc tấm nắp sàn vàng & mái cổng</li>
+        <li><code style="color:#f97316;font-weight:bold;">"Đóng nắp"</code> → Đậy nắp mô-đun lại</li>
+        <li><code style="color:#f97316;font-weight:bold;">"Dâng nước"</code> / <code style="color:#f97316;font-weight:bold;">"Rút nước"</code> → Bơm hoặc xả nước trong máng thử</li>
+        <li><code style="color:#f97316;font-weight:bold;">"Vật cản"</code> → Giả lập vật cản cắt ngang tia Hồng ngoại chống kẹp</li>
+        <li><code style="color:#f97316;font-weight:bold;">"Thuyết minh"</code> → Nghe trợ lý AI thuyết trình toàn bộ nguyên lý</li>
+      </ul>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn-primary" id="btnDemoPitch" style="background:#ea580c;">🔊 Nghe Thuyết trình Mẫu (MP3)</button>
+        <button class="btn-primary" id="btnCloseModal" style="background:#475569;">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /********************************************************************
+     * 1. BỘ PHÁT ÂM THANH TIẾNG VIỆT MP3 THỰC TẾ + HIỆU ỨNG CƠ KHÍ
+     *    (Đảm bảo 100% phát ra giọng nói tiếng Việt rõ nét trên mọi máy!)
+     ********************************************************************/
+    const currentAudioPlayer = new Audio();
+    let lastPlayedClip = "welcome.mp3";
+    let lastSpokenText = "Hệ thống sa bàn cửa chắn ngập thủy lực thông minh đã sẵn sàng hoạt động.";
+
+    // Web Audio API tạo tiếng bơm thủy lực rền nhẹ & tiếng còi báo động
+    let audioCtx = null;
+    function ensureAudioCtx() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playHydraulicSoundEffect(durationMs = 900) {
+      if (!state.audioEnabled) return;
+      try {
+        ensureAudioCtx();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(145, audioCtx.currentTime + durationMs / 1000);
+        gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + durationMs / 1000);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + durationMs / 1000);
+      } catch (e) {}
+    }
+
+    function playVietnameseVoice(clipFile, displayText) {
+      lastPlayedClip = clipFile;
+      lastSpokenText = displayText;
+      document.getElementById('aiSpeechText').textContent = "🔊 " + displayText;
+
+      if (!state.audioEnabled) return;
+
+      const aiDot = document.getElementById('aiDot');
+      aiDot.classList.add('speaking');
+
+      currentAudioPlayer.pause();
+      currentAudioPlayer.src = "audio/" + clipFile;
+      currentAudioPlayer.currentTime = 0;
+
+      currentAudioPlayer.onended = () => {
+        aiDot.classList.remove('speaking');
+      };
+
+      currentAudioPlayer.onerror = () => {
+        aiDot.classList.remove('speaking');
+        // Fallback sang Web Speech API nếu mở file ngoài thư mục
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(displayText);
+          u.lang = 'vi-VN';
+          window.speechSynthesis.speak(u);
+        }
+      };
+
+      currentAudioPlayer.play().catch(() => {
+        aiDot.classList.remove('speaking');
+      });
+    }
+
+    // Bấm vào thanh thông báo AI ở góc phải dưới để nghe lại câu vừa nói
+    document.getElementById('aiToast').addEventListener('click', () => {
+      playVietnameseVoice(lastPlayedClip, lastSpokenText);
+    });
+
+    /********************************************************************
+     * 2. TRẠNG THÁI HỆ THỐNG SA BÀN 90° & TỔ HỢP 3 CẢM BIẾN
+     ********************************************************************/
+    const SENSOR_HEIGHT_CM   = 22.0;
+    const THRESHOLD_CLOSE_CM = 5.0;
+    const THRESHOLD_SAFE_CM  = 2.5;
+    const MAX_GATE_ANGLE_DEG = 90.0; // Chuẩn cửa chống ngập thủy lực dựng vuông góc 90°!
+
+    const state = {
+      waterLevelCm: 1.5,
+      contactSensorWet: false,  // Cảm biến mực nước tiếp xúc (chạm nước khi >= 4.8 cm)
+      irObstacleBlocked: false, // Cảm biến hồng ngoại IR phát hiện vật cản trên cửa
+      gateRaised: false,        // false = 0° (âm sàn), true = 90° (vuông góc ép gioăng)
+      gateAngleDeg: 0.0,        // Góc thực tế hiện tại (0° -> 90°)
+      autoMode: true,
+      rainSimulating: false,
+      rainDirection: 1,
+      inspectOpen: false,
+      inspectProgress: 0,
+      alarmOn: false,
+      audioEnabled: true,
+      autoRotate360: false,
+      espBaseUrl: "",
+      espConnected: false
+    };
+
+    /********************************************************************
+     * 3. KHỞI TẠO MÔ HÌNH 3D THREE.JS (ĐỘNG HỌC XI-LANH LỆCH TÂM 90°)
+     ********************************************************************/
+    const container = document.getElementById('viewport-container');
+    const canvas = document.getElementById('canvas3d');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xdbeafe);
+
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(25, 21, 29);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 3.2, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.minDistance = 10;
+    controls.maxDistance = 65;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.74));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.86);
+    dirLight.position.set(20, 35, 25);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    const diorama = new THREE.Group();
+    scene.add(diorama);
+
+    // Hàm tạo texture gân quả trám inox 304 chống trượt cho mặt cửa (Diamond Tread Plate)
+    function createDiamondPlateTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#b0b8c4';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = '#f1f5f9';
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1;
+      function drawDiamond(cx, cy, ang) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(ang);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 3.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      for (let x = 16; x < 128; x += 32) {
+        for (let y = 16; y < 128; y += 32) {
+          drawDiamond(x, y, Math.PI / 4);
+          drawDiamond(x + 16, y + 16, -Math.PI / 4);
+        }
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(6, 12);
+      return tex;
+    }
+
+    // Vật liệu
+    const matBaseBlack = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+    const matFoamConcrete = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.7 });
+    const matGraniteRoad = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.78 }); // Sàn dốc granite xám sẫm
+    const matSlotTrough = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.55 }); // Lòng rãnh âm sàn
+    const matInoxPlate = new THREE.MeshStandardMaterial({
+      map: createDiamondPlateTexture(),
+      roughness: 0.28,
+      metalness: 0.85
+    }); // Mặt tôn gân quả trám inox 304 chống trượt
+    const matSteelGate = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.28, metalness: 0.78 });
+    const matGasketRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.5 });
+    const matCylinderBody = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.35, metalness: 0.6 });
+    const matPistonRod = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.12, metalness: 0.95 });
+    const matAmberLed = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0x000000, roughness: 0.2 }); // Đèn LED âm tường đá
+    const matGlassWall = new THREE.MeshPhysicalMaterial({
+      color: 0xe0f2fe, transparent: true, opacity: 0.32, roughness: 0.1
+    });
+    const matWater = new THREE.MeshStandardMaterial({
+      color: 0x0ea5e9, transparent: true, opacity: 0.68, roughness: 0.15
+    });
+    const matHouseWall = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.65 });
+    const matRoofBlue = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4 });
+
+    // 3.1. Đế sa bàn & Kết cấu hố âm sàn bê tông
+    const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(28, 1.6, 16), matBaseBlack);
+    baseMesh.position.set(0, -0.8, 0);
+    baseMesh.receiveShadow = true;
+    diorama.add(baseMesh);
+
+    const dryFloorRear = new THREE.Mesh(new THREE.BoxGeometry(8.5, 3.0, 14), matFoamConcrete);
+    dryFloorRear.position.set(9.0, 1.5, 0);
+    diorama.add(dryFloorRear);
+
+    const pitBottom = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.5, 14), matFoamConcrete);
+    pitBottom.position.set(1.6, 0.25, 0);
+    diorama.add(pitBottom);
+
+    const pitFrontWall = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.0, 14), matFoamConcrete);
+    pitFrontWall.position.set(-1.2, 1.5, 0);
+    diorama.add(pitFrontWall);
+
+    // Mặt đường granite & 2 RÃNH ÂM SÀN GIẤU TRỌN XI-LANH (CHUẨN VIDEO CÔNG TRÌNH THỰC TẾ)
+    // Sàn dốc xe chạy bằng đá granite cao độ y = 3.08
+    const removableDeckGroup = new THREE.Group();
+    removableDeckGroup.position.set(0, 0, 0);
+    diorama.add(removableDeckGroup);
+
+    // Dải sàn granite trung tâm nằm giữa 2 rãnh xi-lanh (z từ -3.0 đến +3.0)
+    const roadCenter = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.16, 6.0), matGraniteRoad);
+    roadCenter.position.set(4.8, 3.08, 0);
+    removableDeckGroup.add(roadCenter);
+
+    // Dải sàn granite mép trái ngoài rãnh (z từ 4.2 đến 5.8)
+    const roadLeft = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.16, 1.6), matGraniteRoad);
+    roadLeft.position.set(4.8, 3.08, 5.0);
+    removableDeckGroup.add(roadLeft);
+
+    // Dải sàn granite mép phải ngoài rãnh (z từ -5.8 đến -4.2)
+    const roadRight = new THREE.Mesh(new THREE.BoxGeometry(11.2, 0.16, 1.6), matGraniteRoad);
+    roadRight.position.set(4.8, 3.08, -5.0);
+    removableDeckGroup.add(roadRight);
+
+    // Tấm sàn đuôi nối tiếp dốc hầm
+    const roadRear = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.16, 11.6), matGraniteRoad);
+    roadRear.position.set(10.5, 3.08, 0);
+    diorama.add(roadRear);
+
+    // 2 Rãnh âm sàn Inox (Floor Slots) tại z = ±3.6, khoét sâu 0.63m xuống dưới mặt đường
+    for (let zSide of [-3.6, 3.6]) {
+      // Đáy rãnh âm sàn
+      const slotTrough = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.12, 1.2), matSlotTrough);
+      slotTrough.position.set(3.6, 2.44, zSide);
+      diorama.add(slotTrough);
+
+      // 2 Thành rãnh âm sàn
+      const slotWallIn = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.62, 0.08), matSlotTrough);
+      slotWallIn.position.set(3.6, 2.76, zSide + (zSide > 0 ? -0.56 : 0.56));
+      diorama.add(slotWallIn);
+
+      const slotWallOut = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.62, 0.08), matSlotTrough);
+      slotWallOut.position.set(3.6, 2.76, zSide + (zSide > 0 ? 0.56 : -0.56));
+      diorama.add(slotWallOut);
+
+      // Chặn đuôi rãnh
+      const slotEndBack = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.62, 1.2), matSlotTrough);
+      slotEndBack.position.set(6.85, 2.76, zSide);
+      diorama.add(slotEndBack);
+    }
+
+    // HỐ THU NƯỚC (SUMP PIT) & 3 ĐIỆN CỰC INOX 304 TỰ ĐỘNG BÁO NGẬP (Theo video thực tế)
+    const sumpPitGroup = new THREE.Group();
+    sumpPitGroup.position.set(3.8, 2.45, 5.2);
+    diorama.add(sumpPitGroup);
+
+    const sumpBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 1.2), matSlotTrough);
+    sumpPitGroup.add(sumpBox);
+
+    // Nắp đan hố thu nước Inox có khe thoát nước
+    const sumpGrate = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.06, 1.16), matSteelGate);
+    sumpGrate.position.set(0, 0.62, 0);
+    sumpPitGroup.add(sumpGrate);
+
+    // 3 Que đo điện cực Inox 304 thả trong hố thu
+    for (let i = 0; i < 3; i++) {
+      const probeLen = 0.4 + i * 0.25;
+      const probeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, probeLen, 12), matPistonRod);
+      probeMesh.position.set(-0.3 + i * 0.3, 0.58 - probeLen / 2, 0);
+      sumpPitGroup.add(probeMesh);
+    }
+
+    // 3.2. Máng nước & Khối nước phía ngập
+    const basinBottom = new THREE.Mesh(new THREE.BoxGeometry(11.8, 0.4, 14), matFoamConcrete);
+    basinBottom.position.set(-7.4, 0.2, 0);
+    diorama.add(basinBottom);
+
+    const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(12.2, 6.2, 0.25), matGlassWall);
+    frontGlass.position.set(-7.1, 3.3, 6.9);
+    diorama.add(frontGlass);
+
+    const backGlass = new THREE.Mesh(new THREE.BoxGeometry(12.2, 6.2, 0.25), matGlassWall);
+    backGlass.position.set(-7.1, 3.3, -6.9);
+    diorama.add(backGlass);
+
+    const leftGlass = new THREE.Mesh(new THREE.BoxGeometry(0.25, 6.2, 14), matGlassWall);
+    leftGlass.position.set(-13.1, 3.3, 0);
+    diorama.add(leftGlass);
+
+    const waterGeo = new THREE.BoxGeometry(11.5, 1, 13.5);
+    waterGeo.translate(0, 0.5, 0);
+    const waterMesh = new THREE.Mesh(waterGeo, matWater);
+    waterMesh.position.set(-7.25, 0.4, 0);
+    diorama.add(waterMesh);
+
+    // 3.3. Hai Trụ Cổng + Gioăng Cao Su EPDM Đỏ Đứng 90° + Đèn Âm Tường Đá Vàng
+    const pillarLeft = new THREE.Mesh(new THREE.BoxGeometry(2.4, 9.5, 1.4), matHouseWall);
+    pillarLeft.position.set(0.2, 4.75, 6.3);
+    diorama.add(pillarLeft);
+
+    const pillarRight = new THREE.Mesh(new THREE.BoxGeometry(2.4, 9.5, 1.4), matHouseWall);
+    pillarRight.position.set(0.2, 4.75, -6.3);
+    diorama.add(pillarRight);
+
+    // Đèn LED cảnh báo âm tường đá (Flush Amber Indicator) theo đúng video
+    const wallLightL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 0.25), matAmberLed);
+    wallLightL.position.set(0.2, 5.2, 5.56);
+    diorama.add(wallLightL);
+
+    const wallLightR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 0.25), matAmberLed);
+    wallLightR.position.set(0.2, 5.2, -5.56);
+    diorama.add(wallLightR);
+
+    // Gioăng cao su EPDM thẳng đứng 90° dọc 2 trụ cổng (tại x = -1.02) để cánh cửa ép sát vào khi đạt 90°
+    for (let zGasket of [-5.55, 5.55]) {
+      const gasketStrip = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5.6, 0.25), matGasketRed);
+      gasketStrip.position.set(-1.02, 5.8, zGasket);
+      diorama.add(gasketStrip);
+    }
+
+    // Mái mô-đun cổng
+    const removableRoofGroup = new THREE.Group();
+    diorama.add(removableRoofGroup);
+
+    const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.7, 14.8), matRoofBlue);
+    roofSlab.position.set(0.2, 9.85, 0);
+    removableRoofGroup.add(roofSlab);
+
+    for (let zPos of [-4.5, -1.5, 1.5, 4.5]) {
+      const knob = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.32, 0.35, 20),
+        new THREE.MeshStandardMaterial({ color: 0xffffff })
+      );
+      knob.position.set(0.2, 10.35, zPos);
+      removableRoofGroup.add(knob);
+    }
+
+    // 3.4. TỔ HỢP CẢM BIẾN TRÊN MÔ HÌNH 3D
+    // (1) Cảm biến siêu âm HC-SR04 trên dầm nhìn thẳng xuống máng
+    const sensorGroup = new THREE.Group();
+    sensorGroup.position.set(-2.5, 9.1, 0);
+    diorama.add(sensorGroup);
+    sensorGroup.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.15, 2.0), new THREE.MeshStandardMaterial({ color: 0x0284c7 })));
+    const eyeGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.45, 20);
+    const eyeL = new THREE.Mesh(eyeGeo, matSteelGate); eyeL.position.set(0, -0.25, -0.5);
+    const eyeR = new THREE.Mesh(eyeGeo, matSteelGate); eyeR.position.set(0, -0.25, 0.5);
+    sensorGroup.add(eyeL, eyeR);
+
+    const sonarCone = new THREE.Mesh(
+      new THREE.ConeGeometry(1.35, 7.5, 20, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.16, wireframe: true })
+    );
+    sonarCone.position.set(-2.5, 5.1, 0);
+    diorama.add(sonarCone);
+
+    // (2) Cảm biến Hồng ngoại IR (Chống kẹp vật cản ngang cổng + Tia laser hồng ngoại)
+    const irSensorLeft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.25, 0.4, 16),
+      new THREE.MeshStandardMaterial({ color: 0xf97316 })
+    );
+    irSensorLeft.rotation.x = Math.PI / 2;
+    irSensorLeft.position.set(-0.2, 4.5, 5.5);
+    diorama.add(irSensorLeft);
+
+    const irBeamMat = new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.65 });
+    const irBeamMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 11.0, 12), irBeamMat);
+    irBeamMesh.rotation.x = Math.PI / 2;
+    irBeamMesh.position.set(-0.2, 4.5, 0);
+    diorama.add(irBeamMesh);
+
+    // Khối vật cản giả lập (Chiếc xe/hộp đi ngang qua mặt cửa khi bấm nút "Vật cản IR")
+    const obstacleMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 1.5, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 })
+    );
+    obstacleMesh.position.set(-0.2, 4.1, 0);
+    obstacleMesh.visible = false;
+    diorama.add(obstacleMesh);
+
+    // 3.5. CÁNH CỬA CHẮN NGẬP INOX 304 GÂN QUẢ TRÁM LẬT 0° -> 90° (CHUẨN VIDEO)
+    // Tâm bản lề H đặt tại (-0.9, 3.1, 0)
+    const hingePivot = new THREE.Group();
+    hingePivot.position.set(-0.9, 3.1, 0);
+    diorama.add(hingePivot);
+
+    const gateLength = 5.4;
+    const gateWidth = 11.0;
+
+    // Mặt trước: Tôn gân inox 304 dập nổi hình quả trám chống trượt xe cộ
+    const gatePlate = new THREE.Mesh(new THREE.BoxGeometry(gateLength, 0.18, gateWidth), matInoxPlate);
+    gatePlate.position.set(gateLength / 2, -0.09, 0);
+    gatePlate.castShadow = true;
+    hingePivot.add(gatePlate);
+
+    // Khung xương tăng cứng inox hộp sau lưng cánh cửa (Perimeter Box Frame + Lattice Ribs)
+    const frameBottom = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.32, gateWidth), matSteelGate);
+    frameBottom.position.set(0.12, -0.28, 0);
+    hingePivot.add(frameBottom);
+
+    const frameTop = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.32, gateWidth), matSteelGate);
+    frameTop.position.set(gateLength - 0.12, -0.28, 0);
+    hingePivot.add(frameTop);
+
+    // 2 dầm hộp ngang chịu lực chính sau lưng cửa
+    const rearRib1 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.36, gateWidth - 0.2), matSteelGate);
+    rearRib1.position.set(1.8, -0.28, 0);
+    hingePivot.add(rearRib1);
+
+    const rearRib2 = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.40, gateWidth - 0.2), matSteelGate);
+    rearRib2.position.set(3.4, -0.30, 0);
+    hingePivot.add(rearRib2);
+
+    // 2 Tai bắt chốt mắt trâu P trên lưng cửa ở 63% chiều cao (pinR = 3.4, pinE = 0.35)
+    const pinR = 3.4;
+    const pinE = 0.35;
+    for (let zSide of [-3.6, 3.6]) {
+      const bracketMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.55, 0.38), matSteelGate);
+      bracketMesh.position.set(pinR, -pinE, zSide);
+      hingePivot.add(bracketMesh);
+
+      // Chốt xỏ mắt trâu ngang
+      const pinCross = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.55, 12), matPistonRod);
+      pinCross.position.set(pinR, -pinE, zSide);
+      pinCross.rotation.x = Math.PI / 2;
+      hingePivot.add(pinCross);
+    }
+
+    // BỘ ĐÔI XI-LANH THỦY LỰC ĐẨY CHÉO CHÌM HOÀN TOÀN TRONG 2 RÃNH ÂM SÀN
+    // Gối xoay chân đế Clevis Foot bắt chặt tại đáy rãnh âm sàn tại x = 6.2, y = 2.60, z = ±3.6
+    const pistons = [];
+    for (let zSide of [-3.6, 3.6]) {
+      const baseAnchor = new THREE.Vector3(6.2, 2.60, zSide);
+
+      // 1. Chân đế gối xoay bản mã chữ U cố định đáy rãnh âm sàn
+      const clevisFoot = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.22, 0.55), matSteelGate);
+      clevisFoot.position.set(baseAnchor.x, baseAnchor.y - 0.11, baseAnchor.z);
+      diorama.add(clevisFoot);
+
+      const clevisPin = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.62, 12), matPistonRod);
+      clevisPin.position.copy(baseAnchor);
+      clevisPin.rotation.x = Math.PI / 2;
+      diorama.add(clevisPin);
+
+      // 2. Vỏ xi-lanh ben thủy lực to bản (Cylinder Barrel) dài 3.8m nằm lọt trong rãnh âm
+      const cylGroup = new THREE.Group();
+      cylGroup.position.copy(baseAnchor);
+      const cylMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 3.8, 20), matCylinderBody);
+      cylMesh.rotation.z = -Math.PI / 2;
+      cylMesh.position.x = 1.9;
+      cylGroup.add(cylMesh);
+
+      // Nắp bích chặn đầu ben thủy lực
+      const glandCap = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.32, 20), matSteelGate);
+      glandCap.rotation.z = -Math.PI / 2;
+      glandCap.position.x = 3.8;
+      cylGroup.add(glandCap);
+      diorama.add(cylGroup);
+
+      // 3. Ty pít-tông inox mạ crom sáng bóng (Piston Rod) dài 4.2m
+      const rodGroup = new THREE.Group();
+      const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 4.2, 20), matPistonRod);
+      rodMesh.rotation.z = -Math.PI / 2;
+      rodMesh.position.x = -2.1;
+      rodGroup.add(rodMesh);
+
+      // Khớp mắt trâu tròn ở đầu ty pít-tông (Rod Eye Clevis)
+      const rodEye = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.36, 16), matSteelGate);
+      rodEye.rotation.x = Math.PI / 2;
+      rodGroup.add(rodEye);
+      diorama.add(rodGroup);
+
+      // 4. Đường ống dẫn dầu tuy-ô thủy lực chìm trong hốc kỹ thuật
+      const hoseCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(baseAnchor.x - 0.2, baseAnchor.y + 0.12, zSide),
+        new THREE.Vector3(baseAnchor.x + 0.6, baseAnchor.y - 0.05, zSide * 0.8),
+        new THREE.Vector3(baseAnchor.x + 1.4, baseAnchor.y - 0.05, zSide * 0.5),
+        new THREE.Vector3(baseAnchor.x + 2.2, baseAnchor.y + 0.20, (zSide > 0 ? 5.2 : -5.2))
+      ]);
+      const hoseMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(hoseCurve, 24, 0.065, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6 })
+      );
+      diorama.add(hoseMesh);
+
+      pistons.push({ zSide, baseAnchor, cylGroup, rodGroup });
+    }
+
+    // Tủ điện công nghiệp chuẩn DIN-rail & Bơm thủy lực (Theo video thực tế)
+    const controlCabinetGroup = new THREE.Group();
+    controlCabinetGroup.position.set(2.4, 6.2, 6.2);
+    diorama.add(controlCabinetGroup);
+
+    const cabinetBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.5, 1.2), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.5, roughness: 0.3 }));
+    controlCabinetGroup.add(cabinetBody);
+
+    const cabinetDoorGlass = new THREE.Mesh(new THREE.BoxGeometry(1.62, 2.3, 0.12), matGlassWall);
+    cabinetDoorGlass.position.set(0, 0, -0.6);
+    controlCabinetGroup.add(cabinetDoorGlass);
+
+    // Thanh ray DIN bên trong tủ điện (Mô phỏng Aptomat Schneider C63, Khởi động từ CHINT, Nguồn tổ ong Mean Well 24V)
+    const dinRail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.1), matSteelGate);
+    dinRail.position.set(0, 0.2, -0.4);
+    controlCabinetGroup.add(dinRail);
+
+    const mcbSchneider = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.55, 0.28), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+    mcbSchneider.position.set(-0.35, 0.35, -0.3);
+    controlCabinetGroup.add(mcbSchneider);
+
+    const psuMeanwell = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.65, 0.28), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+    psuMeanwell.position.set(0.3, 0.35, -0.3);
+    controlCabinetGroup.add(psuMeanwell);
+
+    const innerBuilding = new THREE.Mesh(new THREE.BoxGeometry(6.5, 7.5, 11.4), matHouseWall);
+    innerBuilding.position.set(10.0, 6.75, 0);
+    diorama.add(innerBuilding);
+
+    /********************************************************************
+     * 4. VÒNG LẶP ĐỘNG HỌC XI-LANH 0° -> 90° & XỬ LÝ 3 CẢM BIẾN
+     ********************************************************************/
+    function updateKinematicsAndSensors(dt) {
+      // 1. Giả lập nước dâng/rút
+      if (state.rainSimulating && !state.espConnected) {
+        state.waterLevelCm += state.rainDirection * dt * 1.35;
+        if (state.waterLevelCm >= 7.4) {
+          state.waterLevelCm = 7.4;
+          state.rainDirection = -1;
+        } else if (state.waterLevelCm <= 1.0) {
+          state.waterLevelCm = 1.0;
+          state.rainDirection = 1;
+        }
+        document.getElementById('waterSlider').value = state.waterLevelCm.toFixed(1);
+      }
+
+      // 2. Cảm biến mực nước tiếp xúc (chạm ngưỡng khi >= 4.8 cm)
+      state.contactSensorWet = (state.waterLevelCm >= 4.8);
+
+      // 3. Logic Tự động phối hợp 3 Cảm biến (Siêu âm + Mực nước + Hồng ngoại)
+      if (state.autoMode && !state.espConnected) {
+        if ((state.waterLevelCm >= THRESHOLD_CLOSE_CM || state.contactSensorWet) && !state.gateRaised) {
+          state.gateRaised = true;
+          state.alarmOn = true;
+          playHydraulicSoundEffect(1200);
+          playVietnameseVoice(
+            "auto_flood_alert.mp3",
+            "Cảnh báo ngập lụt! Mực nước vượt ngưỡng 5 cm, tự động kích hoạt xi-lanh nâng cửa lên vuông góc 90 độ!"
+          );
+        } else if (state.waterLevelCm <= THRESHOLD_SAFE_CM && state.alarmOn) {
+          state.alarmOn = false;
+          playVietnameseVoice(
+            "water_safe.mp3",
+            "Mực nước đã rút xuống mức an toàn. Người vận hành có thể bấm nút hạ cửa."
+          );
+        }
+      }
+
+      // 4. Nội suy góc mở cánh cửa (0° -> 90.0° vuông góc)
+      // Nếu Cảm biến Hồng ngoại IR phát hiện vật cản trên cửa -> TẠM DỪNG XI-LANH CHỐNG KẸP!
+      const targetAngle = state.gateRaised ? MAX_GATE_ANGLE_DEG : 0.0;
+      if (!state.irObstacleBlocked) {
+        const speedDegPerSec = 42.0;
+        if (Math.abs(state.gateAngleDeg - targetAngle) > 0.2) {
+          const step = Math.sign(targetAngle - state.gateAngleDeg) * speedDegPerSec * dt;
+          if (Math.abs(step) > Math.abs(targetAngle - state.gateAngleDeg)) {
+            state.gateAngleDeg = targetAngle;
+          } else {
+            state.gateAngleDeg += step;
+          }
+        } else {
+          state.gateAngleDeg = targetAngle;
+        }
+      }
+
+      // Áp dụng góc quay bản lề H từ 0° đến đúng 90° (Math.PI / 2)
+      const rad = THREE.MathUtils.degToRad(state.gateAngleDeg);
+      hingePivot.rotation.z = rad;
+
+      // Tính tọa độ thực của chốt mắt trâu P trên lưng cửa khi cửa quay góc rad quanh H(hx, hy):
+      // Trong hệ tọa độ bản lề, P nằm tại (pinR = 3.6, y = -pinE = -0.45, zSide)
+      const pinWorldX = hingePivot.position.x + (pinR * Math.cos(rad) + pinE * Math.sin(rad));
+      const pinWorldY = hingePivot.position.y + (pinR * Math.sin(rad) - pinE * Math.cos(rad));
+
+      for (const p of pistons) {
+        const pinPos = new THREE.Vector3(pinWorldX, pinWorldY, p.zSide);
+        const dir = new THREE.Vector3().subVectors(pinPos, p.baseAnchor);
+        const angleZ = Math.atan2(dir.y, dir.x);
+
+        p.cylGroup.rotation.z = angleZ;
+        p.rodGroup.position.copy(pinPos);
+        p.rodGroup.rotation.z = angleZ;
+      }
+
+      // 5. Cập nhật khối nước 3D
+      waterMesh.scale.y = Math.max(0.08, (state.waterLevelCm / 8.0) * 5.4);
+
+      // 6. Hiệu ứng nhấc sàn quan sát cơ cấu âm sàn
+      const targetInspect = state.inspectOpen ? 1 : 0;
+      state.inspectProgress += (targetInspect - state.inspectProgress) * Math.min(1, dt * 6);
+      removableDeckGroup.position.y = state.inspectProgress * 3.6;
+      removableRoofGroup.position.y = state.inspectProgress * 3.6;
+
+      // 7. Hiển thị tia Hồng ngoại IR & Vật cản
+      obstacleMesh.visible = state.irObstacleBlocked;
+      irBeamMat.color.setHex(state.irObstacleBlocked ? 0xef4444 : 0x22c55e);
+
+      // 8. Chớp đèn LED âm tường đá màu vàng hổ phách (Amber Wall Indicators)
+      if (state.alarmOn || state.gateAngleDeg > 0.5 || state.irObstacleBlocked) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.012);
+        matAmberLed.emissive.setRGB(0.95 * pulse, 0.60 * pulse, 0.05 * pulse);
+      } else {
+        matAmberLed.emissive.setHex(0x000000);
+      }
+
+      controls.autoRotate = state.autoRotate360;
+      controls.autoRotateSpeed = 2.0;
+
+      syncUIFromState();
+    }
+
+    /********************************************************************
+     * 5. ĐỒNG BỘ GIAO DIỆN HUD & 6 NÚT BẤM
+     ********************************************************************/
+    function syncUIFromState() {
+      const distSensor = Math.max(2.0, SENSOR_HEIGHT_CM - state.waterLevelCm);
+      document.getElementById('lblWaterCm').textContent = `${state.waterLevelCm.toFixed(1)} cm`;
+      document.getElementById('lblSensorDist').textContent = distSensor.toFixed(1);
+
+      const waterPill = document.getElementById('waterPill');
+      if (state.waterLevelCm >= THRESHOLD_CLOSE_CM) {
+        waterPill.classList.add('danger');
+        document.getElementById('sliderValText').textContent = `${state.waterLevelCm.toFixed(1)} cm (NGẬP!)`;
+        document.getElementById('sliderValText').style.color = '#ef4444';
+      } else {
+        waterPill.classList.remove('danger');
+        document.getElementById('sliderValText').textContent = `${state.waterLevelCm.toFixed(1)} cm (An toàn)`;
+        document.getElementById('sliderValText').style.color = '#38bdf8';
+      }
+
+      // HUD Cảm biến điện cực Hố thu (Sump Pit)
+      const contactPill = document.getElementById('contactSensorPill');
+      const lblContact = document.getElementById('lblContactSensor');
+      if (state.contactSensorWet) {
+        contactPill.classList.add('danger');
+        lblContact.textContent = 'NGẬP HỐ THU (Báo động)';
+      } else {
+        contactPill.classList.remove('danger');
+        lblContact.textContent = 'KHÔ (An toàn)';
+      }
+
+      // HUD Cảm biến Hồng ngoại IR
+      const irPill = document.getElementById('irSensorPill');
+      const lblIr = document.getElementById('lblIrSensor');
+      if (state.irObstacleBlocked) {
+        irPill.classList.add('danger');
+        lblIr.textContent = 'CÓ VẬT CẢN (Dừng kẹp!)';
+      } else {
+        irPill.classList.remove('danger');
+        lblIr.textContent = 'THÔNG THOÁNG';
+      }
+
+      const angleInt = Math.round(state.gateAngleDeg);
+      document.getElementById('lblGateAngle').textContent =
+        state.irObstacleBlocked ? `${angleInt}° (TẠM DỪNG CHỐNG KẸP)` :
+        angleInt >= 89 ? `90° (VUÔNG GÓC ÉP GIOĂNG)` :
+        angleInt <= 1  ? `0° (Phẳng âm sàn)` :
+                         `${angleInt}° (Đang di chuyển...)`;
+
+      document.getElementById('cardGate').className = 'ctrl-card ' + (state.gateRaised ? 'active-cyan' : '');
+      document.getElementById('statusGate').textContent = state.gateRaised ? 'ĐANG DỰNG (90°)' : 'ĐANG HẠ (0°)';
+
+      document.getElementById('cardRain').className = 'ctrl-card ' + (state.rainSimulating ? 'active-purple' : '');
+      document.getElementById('statusRain').textContent = state.rainSimulating ? 'ĐANG BƠM NƯỚC' : 'ĐANG TẮT';
+
+      document.getElementById('cardAuto').className = 'ctrl-card ' + (state.autoMode ? 'active-green' : '');
+      document.getElementById('statusAuto').textContent = state.autoMode ? 'ĐANG BẬT' : 'BẰNG TAY';
+
+      document.getElementById('cardInspect').className = 'ctrl-card ' + (state.inspectOpen ? 'active-cyan' : '');
+      document.getElementById('statusInspect').textContent = state.inspectOpen ? 'ĐANG MỞ QUAN SÁT' : 'ĐANG ĐẬY KÍN';
+
+      document.getElementById('cardAlarm').className = 'ctrl-card ' + (state.alarmOn ? 'active-red' : '');
+      document.getElementById('statusAlarm').textContent = state.alarmOn ? 'ĐANG BÁO ĐỘNG' : 'ĐANG TẮT';
+
+      document.getElementById('cardAudio').className = 'ctrl-card ' + (state.audioEnabled ? 'active-yellow' : '');
+      document.getElementById('statusAudio').textContent = state.audioEnabled ? 'ĐANG BẬT (MP3)' : 'ĐANG TẮT';
+    }
+
+    /********************************************************************
+     * 6. NHẬN DIỆN GIỌNG NÓI TIẾNG VIỆT & KẾT NỐI ESP8266
+     ********************************************************************/
+    async function sendEspCommand(path) {
+      if (!state.espConnected || !state.espBaseUrl) return;
+      try {
+        await fetch(state.espBaseUrl + path);
+      } catch (e) {
+        // Fallback endpoint nếu dùng format khác
+        try {
+          const alt = path.replace('/api/command?cmd=', '/api/cmd?action=');
+          await fetch(state.espBaseUrl + alt);
+        } catch (err) {}
+      }
+    }
+
+    function setGateRaised(raised, manualOverride = false) {
+      if (manualOverride && !raised && state.waterLevelCm >= THRESHOLD_CLOSE_CM) {
+        state.autoMode = false;
+      }
+      state.gateRaised = raised;
+      playHydraulicSoundEffect(1100);
+      sendEspCommand(raised ? '/api/command?cmd=raise' : '/api/command?cmd=lower');
+    }
+
+    function processVietnameseVoiceCommand(rawTranscript) {
+      const cmd = rawTranscript.toLowerCase().trim();
+      if (cmd.includes('nâng cửa') || cmd.includes('đóng cửa') || cmd.includes('dựng cửa') || cmd.includes('chắn ngập')) {
+        setGateRaised(true, true);
+        playVietnameseVoice("raise_gate.mp3", "Mình đã kích hoạt xi-lanh thủy lực nâng cửa chắn ngập lên góc 90 độ rồi đó!");
+      } else if (cmd.includes('hạ cửa') || cmd.includes('mở cửa')) {
+        setGateRaised(false, true);
+        playVietnameseVoice("lower_gate.mp3", "Đã hạ cửa chắn ngập xuống phẳng mặt sàn 0 độ rồi nhé!");
+      } else if (cmd.includes('mở nắp') || cmd.includes('tháo nắp') || cmd.includes('bên trong') || cmd.includes('cơ khí')) {
+        state.inspectOpen = true;
+        playVietnameseVoice("inspect_open.mp3", "Mình đã nhấc nắp mô-đun để bạn quan sát cơ cấu xi-lanh lệch tâm bên trong.");
+      } else if (cmd.includes('đóng nắp') || cmd.includes('đậy nắp')) {
+        state.inspectOpen = false;
+        playVietnameseVoice("inspect_close.mp3", "Đã đóng nắp mô-đun sa bàn lại như cũ rồi nhé!");
+      } else if (cmd.includes('vật cản') || cmd.includes('chống kẹp')) {
+        toggleIrObstacle();
+      } else if (cmd.includes('dâng nước') || cmd.includes('bật mưa') || cmd.includes('bơm nước')) {
+        state.rainSimulating = true;
+        state.rainDirection = 1;
+        playVietnameseVoice("rain_on.mp3", "Đang bơm nước giả lập mưa ngập vào máng thử nghiệm.");
+      } else if (cmd.includes('rút nước') || cmd.includes('tắt mưa')) {
+        state.rainSimulating = false;
+        state.waterLevelCm = 1.5;
+        document.getElementById('waterSlider').value = 1.5;
+        playVietnameseVoice("water_safe.mp3", "Đã rút nước về mức an toàn 1.5 cm.");
+      } else if (cmd.includes('thuyết minh') || cmd.includes('giới thiệu')) {
+        playVietnameseVoice("pitch_full.mp3", "Đang phát bài thuyết trình giới thiệu nguyên lý cửa thủy lực 90 độ và tổ hợp 3 cảm biến...");
+      } else {
+        playVietnameseVoice("welcome.mp3", `Đã nhận lệnh "${rawTranscript}". Hệ thống sa bàn sẵn sàng!`);
+      }
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isListening = false;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'vi-VN';
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        isListening = true;
+        document.getElementById('btnVoiceAI').classList.add('listening');
+        document.getElementById('aiDot').classList.add('listening');
+        document.getElementById('aiSpeechText').textContent = '🎙️ Đang nghe lệnh tiếng Việt... ("Nâng cửa", "Hạ cửa", "Mở nắp", "Thuyết minh")';
+      };
+      recognition.onresult = (e) => processVietnameseVoiceCommand(e.results[0][0].transcript);
+      recognition.onend = () => {
+        isListening = false;
+        document.getElementById('btnVoiceAI').classList.remove('listening');
+        document.getElementById('aiDot').classList.remove('listening');
+      };
+    }
+
+    function toggleIrObstacle() {
+      state.irObstacleBlocked = !state.irObstacleBlocked;
+      document.getElementById('btnIrObstacle').classList.toggle('warn-active', state.irObstacleBlocked);
+      if (state.irObstacleBlocked) {
+        playVietnameseVoice(
+          "ir_obstacle_on.mp3",
+          "Cảnh báo an toàn! Cảm biến hồng ngoại phát hiện có vật cản trên mặt cửa, lập tức tạm dừng xi-lanh để chống kẹp."
+        );
+      } else {
+        playVietnameseVoice(
+          "ir_obstacle_off.mp3",
+          "Vật cản đã rời khỏi vùng cảm biến hồng ngoại. Cửa chắn ngập tiếp tục hành trình."
+        );
+      }
+    }
+
+    /********************************************************************
+     * 7. GẮN SỰ KIỆN NÚT BẤM
+     ********************************************************************/
+    document.getElementById('cardGate').addEventListener('click', () => {
+      const next = !state.gateRaised;
+      setGateRaised(next, true);
+      if (next) {
+        playVietnameseVoice("raise_gate.mp3", "Mình đã kích hoạt xi-lanh thủy lực nâng cửa chắn ngập lên góc 90 độ rồi đó!");
+      } else {
+        playVietnameseVoice("lower_gate.mp3", "Đã hạ cửa chắn ngập xuống phẳng mặt sàn 0 độ rồi nhé!");
+      }
+    });
+
+    document.getElementById('cardRain').addEventListener('click', () => {
+      state.rainSimulating = !state.rainSimulating;
+      state.rainDirection = 1;
+      if (state.rainSimulating) {
+        playVietnameseVoice("rain_on.mp3", "Đang bơm nước giả lập mưa ngập vào máng thử nghiệm.");
+      } else {
+        playVietnameseVoice("rain_off.mp3", "Đã dừng bơm nước giả lập.");
+      }
+    });
+
+    document.getElementById('cardAuto').addEventListener('click', () => {
+      state.autoMode = !state.autoMode;
+      sendEspCommand(state.autoMode ? '/api/command?cmd=auto_on' : '/api/command?cmd=auto_off');
+      if (state.autoMode) {
+        playVietnameseVoice("auto_on.mp3", "Đã bật chế độ tự động đóng cửa theo tổ hợp cảm biến siêu âm và cảm biến mực nước.");
+      } else {
+        playVietnameseVoice("auto_off.mp3", "Đã chuyển sang chế độ điều khiển nâng hạ bằng tay.");
+      }
+    });
+
+    document.getElementById('cardInspect').addEventListener('click', () => {
+      state.inspectOpen = !state.inspectOpen;
+      if (state.inspectOpen) {
+        camera.position.set(14, 17, 21);
+        controls.target.set(1.5, 2.5, 0);
+        playVietnameseVoice("inspect_open.mp3", "Mình đã nhấc nắp mô-đun để bạn quan sát cơ cấu xi-lanh thủy lực lệch tâm và hệ thống cảm biến bên trong.");
+      } else {
+        playVietnameseVoice("inspect_close.mp3", "Đã đóng nắp mô-đun sa bàn lại như cũ rồi nhé!");
+      }
+    });
+
+    document.getElementById('cardAlarm').addEventListener('click', () => {
+      state.alarmOn = !state.alarmOn;
+      sendEspCommand(state.alarmOn ? '/api/command?cmd=alarm_on' : '/api/command?cmd=alarm_off');
+      if (state.alarmOn) {
+        playVietnameseVoice("alarm_on.mp3", "Đã bật đèn và còi cảnh báo ngập lụt.");
+      } else {
+        playVietnameseVoice("alarm_off.mp3", "Đã tắt đèn cảnh báo rồi nhé.");
+      }
+    });
+
+    document.getElementById('cardAudio').addEventListener('click', () => {
+      state.audioEnabled = !state.audioEnabled;
+      if (state.audioEnabled) {
+        playVietnameseVoice("welcome.mp3", "Đã bật âm thanh giọng nói tiếng Việt.");
+      } else {
+        currentAudioPlayer.pause();
+      }
+    });
+
+    document.getElementById('btnPitchQuick').addEventListener('click', () => {
+      playVietnameseVoice(
+        "pitch_full.mp3",
+        "Xin chào Ban Giám Khảo! Đang thuyết minh nguyên lý cửa chắn ngập thủy lực 90 độ và hệ thống 3 cảm biến..."
+      );
+    });
+
+    document.getElementById('btnIrObstacle').addEventListener('click', toggleIrObstacle);
+
+    document.getElementById('waterSlider').addEventListener('input', (e) => {
+      state.rainSimulating = false;
+      state.waterLevelCm = parseFloat(e.target.value);
+    });
+
+    document.getElementById('btn360').addEventListener('click', (e) => {
+      state.autoRotate360 = !state.autoRotate360;
+      e.currentTarget.classList.toggle('active', state.autoRotate360);
+    });
+
+    document.getElementById('btnFit').addEventListener('click', () => {
+      state.autoRotate360 = false;
+      document.getElementById('btn360').classList.remove('active');
+      camera.position.set(25, 21, 29);
+      controls.target.set(0, 3.2, 0);
+    });
+
+    document.getElementById('btnCutaway').addEventListener('click', () => {
+      state.inspectOpen = true;
+      camera.position.set(1.8, 5.2, 21);
+      controls.target.set(1.0, 3.0, 0);
+      playVietnameseVoice(
+        "cutaway_view.mp3",
+        "Đây là góc nhìn mặt cắt kỹ thuật thể hiện cơ cấu xi-lanh đẩy cánh cửa từ 0 độ lên vuông góc 90 độ."
+      );
+    });
+
+    document.getElementById('btnVoiceAI').addEventListener('click', () => {
+      if (!recognition) {
+        playVietnameseVoice("pitch_full.mp3", "Đang phát bài thuyết trình giọng nói tiếng Việt...");
+        return;
+      }
+      if (isListening) recognition.stop();
+      else recognition.start();
+    });
+
+    // Modals
+    const blueprintModal = document.getElementById('blueprintModal');
+    const configModal = document.getElementById('configModal');
+    document.getElementById('btnShowBlueprint').addEventListener('click', () => blueprintModal.classList.add('open'));
+    document.getElementById('btnCloseBlueprint').addEventListener('click', () => blueprintModal.classList.remove('open'));
+    document.getElementById('btnWifiConfig').addEventListener('click', () => configModal.classList.add('open'));
+    document.getElementById('btnShowQR').addEventListener('click', () => configModal.classList.add('open'));
+    document.getElementById('btnCloseModal').addEventListener('click', () => configModal.classList.remove('open'));
+    document.getElementById('btnDemoPitch').addEventListener('click', () => {
+      configModal.classList.remove('open');
+      playVietnameseVoice("pitch_full.mp3", "Xin chào Ban Giám Khảo! Đang phát bài thuyết trình mẫu bằng giọng nói tiếng Việt...");
+    });
+
+    document.getElementById('btnConnectEsp').addEventListener('click', async () => {
+      const url = document.getElementById('espIpInput').value.trim().replace(/\/+$/, '');
+      state.espBaseUrl = url;
+      document.getElementById('espConnStatus').textContent = '⏳ Đang thử kết nối tới ' + url + '...';
+      try {
+        const res = await fetch(url + '/api/status');
+        if (res.ok) {
+          state.espConnected = true;
+          document.getElementById('btnWifiConfig').classList.remove('offline');
+          document.getElementById('espConnStatus').textContent = '✅ Đã kết nối thành công với mạch ESP8266 D1 Mini!';
+          playVietnameseVoice("welcome.mp3", "Đã kết nối đồng bộ thời gian thực với mạch ESP8266.");
+        } else throw new Error();
+      } catch (e) {
+        state.espConnected = false;
+        document.getElementById('btnWifiConfig').classList.add('offline');
+        document.getElementById('espConnStatus').textContent = '❌ Không tìm thấy mạch tại địa chỉ trên. Đang giữ chế độ Mô phỏng 3D.';
+      }
+    });
+
+    let lastTime = performance.now();
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+      updateKinematicsAndSensors(dt);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+  </script>
+</body>
+</html>

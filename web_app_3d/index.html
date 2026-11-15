@@ -35,9 +35,11 @@
       color: var(--text-main);
       overflow: hidden;
       height: 100vh;
+      height: 100dvh;
       width: 100vw;
       display: flex;
       flex-direction: column;
+      touch-action: manipulation;
     }
 
     /* Vùng 3D Viewport */
@@ -534,6 +536,288 @@
       color: #94a3b8;
       font-size: 11px;
     }
+
+    /* ====================================================================
+     * CHẾ ĐỘ ẨN THÔNG TIN & XEM 3D TOÀN MÀN HÌNH (CLEAN VIEW MODE)
+     * ==================================================================== */
+    body.clean-view #viewport-container {
+      flex: 1 1 100% !important;
+      height: 100% !important;
+    }
+    body.clean-view #control-deck {
+      display: none !important;
+    }
+    body.clean-view .telemetry-hud {
+      display: none !important;
+    }
+    body.clean-view .brand-box {
+      display: none !important;
+    }
+    body.clean-view .top-right-group .qr-badge:not(#btnToggleHud) {
+      display: none !important;
+    }
+
+    .floating-restore-btn {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(12px);
+      color: #38bdf8;
+      border: 1.5px solid rgba(56, 189, 248, 0.6);
+      border-radius: 24px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 800;
+      display: none;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      transition: all 0.2s ease;
+      pointer-events: auto;
+    }
+    .floating-restore-btn:hover {
+      background: #0284c7;
+      color: #fff;
+      transform: scale(1.04);
+    }
+    body.clean-view .floating-restore-btn {
+      display: flex !important;
+    }
+
+    /* ====================================================================
+     * TỐI ƯU HÓA RESPONSIVE CHO ĐIỆN THOẠI DI ĐỘNG (MOBILE RESPONSIVE)
+     * ==================================================================== */
+    @media (max-width: 768px) {
+      #viewport-container {
+        flex: 1 1 50%;
+        min-height: 220px;
+      }
+
+      #control-deck {
+        padding: 7px 10px 10px;
+        gap: 6px;
+        max-height: 48vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .top-bar {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        gap: 6px;
+      }
+
+      .brand-box {
+        padding: 5px 9px;
+        border-radius: 9px;
+        max-width: calc(100% - 150px);
+      }
+
+      .brand-tag {
+        font-size: 8.5px;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .brand-title {
+        font-size: 11.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 1px;
+      }
+
+      .top-right-group {
+        gap: 4px;
+      }
+
+      .qr-badge {
+        padding: 4px 6px;
+        border-radius: 8px;
+      }
+
+      .qr-badge span:first-child {
+        font-size: 15px !important;
+      }
+
+      .qr-badge span:last-child {
+        font-size: 8px;
+        margin-top: 1px;
+      }
+
+      .telemetry-hud {
+        bottom: 6px;
+        left: 8px;
+        right: 8px;
+        gap: 5px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .hud-pills {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 4px;
+      }
+
+      .hud-pills::-webkit-scrollbar {
+        display: none;
+      }
+
+      .hud-pill {
+        padding: 4px 8px;
+        font-size: 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        border-radius: 7px;
+      }
+
+      .hud-pill strong {
+        font-size: 11px;
+      }
+
+      .ai-toast {
+        max-width: 100%;
+        padding: 5px 10px;
+        font-size: 11px;
+        border-radius: 12px;
+      }
+
+      .toolbar-row {
+        gap: 4px;
+        justify-content: flex-start;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 2px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .toolbar-row::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tool-group {
+        flex-shrink: 0;
+        gap: 4px;
+        flex-wrap: nowrap;
+      }
+
+      .tool-btn {
+        padding: 5px 9px;
+        font-size: 11px;
+        white-space: nowrap;
+        border-radius: 12px;
+      }
+
+      .pitch-btn, .ai-btn {
+        padding: 5px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .wifi-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+      }
+
+      .water-slider-bar {
+        padding: 4px 8px;
+        font-size: 11px;
+        gap: 6px;
+      }
+
+      .cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+
+      .ctrl-card {
+        padding: 7px 9px;
+        gap: 8px;
+        border-radius: 10px;
+      }
+
+      .card-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+        border-radius: 8px;
+      }
+
+      .card-title {
+        font-size: 11.5px;
+        line-height: 1.25;
+      }
+
+      .card-status {
+        font-size: 9px;
+        margin-top: 1px;
+      }
+
+      .modal-box {
+        padding: 14px;
+        max-height: 92vh;
+        border-radius: 12px;
+      }
+
+      .cad-download-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .brand-box {
+        max-width: 140px;
+      }
+      .card-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+      }
+      .card-title {
+        font-size: 10.5px;
+      }
+      .card-status {
+        font-size: 8.5px;
+      }
+    }
+
+    /* Hỗ trợ chế độ xoay ngang màn hình (Landscape) trên điện thoại */
+    @media (max-height: 500px) and (orientation: landscape) {
+      body {
+        flex-direction: row;
+      }
+      #viewport-container {
+        flex: 1 1 65%;
+        height: 100vh;
+        height: 100dvh;
+      }
+      #control-deck {
+        flex: 0 0 35%;
+        max-height: 100vh;
+        max-height: 100dvh;
+        overflow-y: auto;
+        border-top: none;
+        border-left: 1px solid rgba(255,255,255,0.1);
+      }
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+      .top-bar {
+        max-width: 65%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -549,6 +833,10 @@
       </div>
 
       <div class="top-right-group">
+        <div class="qr-badge" id="btnToggleHud" title="Ẩn/Hiện thông tin để xem 3D toàn màn hình không bị che khuất">
+          <span style="font-size:18px;" id="toggleHudIcon">👁️</span>
+          <span id="toggleHudText">ẨN T.TIN</span>
+        </div>
         <div class="qr-badge" id="btnShowBlueprint" title="Xem Bản vẽ Kỹ thuật 2D & Tải File 3D (.STL / .OBJ)">
           <span style="font-size:18px;">📐</span>
           <span>BẢN VẼ & 3D</span>
@@ -559,6 +847,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Nút nổi khôi phục bảng điều khiển khi đang ẩn thông tin -->
+    <button class="floating-restore-btn" id="floatingRestoreBtn" title="Bấm vào để hiện lại đầy đủ bảng điều khiển và thông số">
+      <span>👁️</span>
+      <span>HIỆN BẢNG ĐIỀU KHIỂN</span>
+    </button>
 
     <!-- Thông số thời gian thực của 3 Cảm biến + Trợ lý ảo AI -->
     <div class="telemetry-hud">
@@ -593,6 +887,7 @@
   <div id="control-deck">
     <div class="toolbar-row">
       <div class="tool-group">
+        <button class="tool-btn" id="btnToggleDeck" title="Ẩn/Hiện thông tin và bảng điều khiển">👁️ Ẩn thông tin</button>
         <button class="tool-btn" id="btn360">🔄 360°</button>
         <button class="tool-btn" id="btnFit">🎯 FIT</button>
         <button class="tool-btn" id="btnCutaway">📐 MẶT CẮT 90°</button>
@@ -1500,6 +1795,10 @@
         playVietnameseVoice("water_safe.mp3", "Đã rút nước về mức an toàn 1.5 cm.");
       } else if (cmd.includes('thuyết minh') || cmd.includes('giới thiệu')) {
         playVietnameseVoice("pitch_full.mp3", "Đang phát bài thuyết trình giới thiệu nguyên lý cửa thủy lực 90 độ và tổ hợp 3 cảm biến...");
+      } else if (cmd.includes('ẩn thông tin') || cmd.includes('toàn màn hình') || cmd.includes('xem sạch')) {
+        setHudVisibility(false);
+      } else if (cmd.includes('hiện thông tin') || cmd.includes('hiện bảng') || cmd.includes('mở bảng')) {
+        setHudVisibility(true);
       } else {
         playVietnameseVoice("welcome.mp3", `Đã nhận lệnh "${rawTranscript}". Hệ thống sa bàn sẵn sàng!`);
       }
@@ -1641,6 +1940,47 @@
         "Đây là góc nhìn mặt cắt kỹ thuật thể hiện cơ cấu xi-lanh đẩy cánh cửa từ 0 độ lên vuông góc 90 độ."
       );
     });
+
+    /********************************************************************
+     * CHỨC NĂNG ẨN / HIỆN THÔNG TIN & XEM 3D TOÀN MÀN HÌNH (CLEAN VIEW)
+     ********************************************************************/
+    let hudVisible = true;
+    function setHudVisibility(visible) {
+      hudVisible = visible;
+      document.body.classList.toggle('clean-view', !hudVisible);
+
+      const elIcon = document.getElementById('toggleHudIcon');
+      if (elIcon) elIcon.textContent = hudVisible ? '👁️' : '📲';
+      const elText = document.getElementById('toggleHudText');
+      if (elText) elText.textContent = hudVisible ? 'ẨN T.TIN' : 'HIỆN T.TIN';
+
+      const deckBtn = document.getElementById('btnToggleDeck');
+      if (deckBtn) deckBtn.innerHTML = hudVisible ? '👁️ Ẩn thông tin' : '👁️ Hiện thông tin';
+
+      setTimeout(() => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      }, 60);
+
+      playVietnameseVoice(
+        hudVisible ? "welcome.mp3" : "cutaway_view.mp3",
+        hudVisible ? "Đã hiển thị lại đầy đủ bảng thông tin và điều khiển." : "Đã chuyển sang chế độ xem 3D toàn màn hình không bị che khuất."
+      );
+    }
+
+    const btnToggleHud = document.getElementById('btnToggleHud');
+    if (btnToggleHud) {
+      btnToggleHud.addEventListener('click', () => setHudVisibility(!hudVisible));
+    }
+    const btnToggleDeck = document.getElementById('btnToggleDeck');
+    if (btnToggleDeck) {
+      btnToggleDeck.addEventListener('click', () => setHudVisibility(!hudVisible));
+    }
+    const floatingRestoreBtn = document.getElementById('floatingRestoreBtn');
+    if (floatingRestoreBtn) {
+      floatingRestoreBtn.addEventListener('click', () => setHudVisibility(true));
+    }
 
     document.getElementById('btnVoiceAI').addEventListener('click', () => {
       if (!recognition) {

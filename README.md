@@ -27,7 +27,7 @@ Dự án nghiên cứu, thiết kế và chế tạo mô hình **Sa Bàn Cửa C
    * 🌊 **Cảm biến Siêu âm HC-SR04:** Đo liên tục mực nước đường phố từ xa không tiếp xúc.
    * 🚰 **Cực điện cực Inox 304 Hố thu nước (Sump Pit Probes):** Xác nhận ngập tức thời khi nước tràn vào hố thu ở mép cổng.
    * 🔴 **Cảm biến Hồng ngoại IR (Anti-pinch):** Chống kẹp an toàn khi có xe hoặc người đi qua cửa.
-5. **Bản sao số 3D Digital Twin + AI Tiếng Việt:** Ứng dụng Three.js xoay 360°, mô phỏng động học thời gian thực, tích hợp 17 file giọng nói tiếng Việt chuẩn (`.mp3`) và nhận diện giọng nói tiếng Việt ra lệnh qua micro.
+5. **Bản sao số 3D Digital Twin + AI Tiếng Việt (Tối ưu 100% Mobile Responsive):** Ứng dụng Three.js tương thích hoàn hảo trên điện thoại thông minh (chế độ dọc & xoay ngang landscape), có nút **"👁️ Ẩn thông tin"** xem 3D toàn màn hình không bị che khuất, tích hợp 17 file giọng nói tiếng Việt chuẩn (`.mp3`) và nhận diện giọng nói tiếng Việt ra lệnh qua micro.
 6. **Vi điều khiển ESP8266 Wemos D1 Mini:** Tự phát Wi-Fi Soft-AP `SaBan_ChongNgap_IoT`, cung cấp REST API hai chiều đồng bộ thời gian thực với Web App.
 
 ---
